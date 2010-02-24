@@ -14,9 +14,9 @@
  *
  * @category   Zend
  * @package    Zend_Dom
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
- * @version    $Id: Query.php 17293 2009-07-30 02:34:37Z yoshida@zend.co.jp $
+ * @version    $Id: Query.php 20908 2010-02-04 19:00:54Z matthew $
  */
 
 /**
@@ -34,13 +34,13 @@ require_once 'Zend/Dom/Query/Result.php';
  *
  * @package    Zend_Dom
  * @subpackage Query
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 class Zend_Dom_Query
 {
     /**#@+
-     * @const string Document types
+     * Document types
      */
     const DOC_XML   = 'docXml';
     const DOC_HTML  = 'docHtml';
@@ -178,12 +178,12 @@ class Zend_Dom_Query
         $type   = $this->getDocumentType();
         switch ($type) {
             case self::DOC_XML:
-                $success = @$domDoc->loadXML($document);
+                $success = $domDoc->loadXML($document);
                 break;
             case self::DOC_HTML:
             case self::DOC_XHTML:
             default:
-                $success = @$domDoc->loadHTML($document);
+                $success = $domDoc->loadHTML($document);
                 break;
         }
 

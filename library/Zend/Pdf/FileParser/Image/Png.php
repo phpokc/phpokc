@@ -15,12 +15,12 @@
  * @category   Zend
  * @package    Zend_Pdf
  * @subpackage FileParser
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
- * @version    $Id: Png.php 18993 2009-11-15 17:09:16Z alexander $
+ * @version    $Id: Png.php 20423 2010-01-19 14:37:20Z yoshida@zend.co.jp $
  */
 
-/** Zend_Pdf_FileParser_Image */
+/** @see Zend_Pdf_FileParser_Image */
 require_once 'Zend/Pdf/FileParser/Image.php';
 
 
@@ -29,7 +29,7 @@ require_once 'Zend/Pdf/FileParser/Image.php';
  *
  * @package    Zend_Pdf
  * @subpackage FileParser
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 class Zend_Pdf_FileParser_Image_Png extends Zend_Pdf_FileParser_Image
@@ -320,7 +320,7 @@ class Zend_Pdf_FileParser_Image_Png extends Zend_Pdf_FileParser_Image
 
              case Zend_Pdf_Image::PNG_CHANNEL_GRAY_ALPHA:
                   //Fall through to the next case
-             case Zend_Pdf_Image::PING_CHANNEL_RGB_ALPHA:
+             case Zend_Pdf_Image::PNG_CHANNEL_RGB_ALPHA:
                   require_once 'Zend/Pdf/Exception.php';
                   throw new Zend_Pdf_Exception( "tRNS chunk illegal for Alpha Channel Images" );
                   break;

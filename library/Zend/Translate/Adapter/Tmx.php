@@ -14,8 +14,8 @@
  *
  * @category   Zend
  * @package    Zend_Translate
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
- * @version    $Id: Tmx.php 16971 2009-07-22 18:05:45Z mikaelkael $
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
+ * @version    $Id: Tmx.php 20096 2010-01-06 02:05:09Z bkarwin $
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 
@@ -30,7 +30,7 @@ require_once 'Zend/Translate/Adapter.php';
 /**
  * @category   Zend
  * @package    Zend_Translate
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 class Zend_Translate_Adapter_Tmx extends Zend_Translate_Adapter {
@@ -41,21 +41,6 @@ class Zend_Translate_Adapter_Tmx extends Zend_Translate_Adapter {
     private $_seg     = null;
     private $_content = null;
     private $_data    = array();
-
-    /**
-     * Generates the tmx adapter
-     * This adapter reads with php's xml_parser
-     *
-     * @param  string              $data     Translation data
-     * @param  string|Zend_Locale  $locale   OPTIONAL Locale/Language to set, identical with locale identifier,
-     *                                       see Zend_Locale for more information
-     * @param  array               $options  OPTIONAL Options to set
-     */
-    public function __construct($data, $locale = null, array $options = array())
-    {
-        parent::__construct($data, $locale, $options);
-    }
-
 
     /**
      * Load translation data (TMX file reader)
@@ -94,7 +79,14 @@ class Zend_Translate_Adapter_Tmx extends Zend_Translate_Adapter {
         return $this->_data;
     }
 
-    private function _startElement($file, $name, $attrib)
+    /**
+     * Internal method, called by xml element handler at start
+     *
+     * @param resource $file   File handler
+     * @param string   $name   Elements name
+     * @param array    $attrib Attributes for this element
+     */
+    protected function _startElement($file, $name, $attrib)
     {
         if ($this->_seg !== null) {
             $this->_content .= "<".$name;
@@ -111,7 +103,20 @@ class Zend_Translate_Adapter_Tmx extends Zend_Translate_Adapter {
                     break;
                 case 'tuv':
                     if (isset($attrib['xml:lang']) === true) {
-                        $this->_tuv = $attrib['xml:lang'];
+                        if (Zend_Locale::isLocale($attrib['xml:lang'])) {
+                            $this->_tuv = Zend_Locale::findLocale($attrib['xml:lang']);
+                        } else {
+                            if (!$this->_options['disableNotices']) {
+                                if ($this->_options['log']) {
+                                    $this->_options['log']->notice("The language '{$attrib['xml:lang']}' can not be set because it does not exist.");
+                                } else {
+                                    trigger_error("The language '{$attrib['xml:lang']}' can not be set because it does not exist.", E_USER_NOTICE);
+                                }
+                            }
+
+                            $this->_tuv = $attrib['xml:lang'];
+                        }
+
                         if (isset($this->_data[$this->_tuv]) === false) {
                             $this->_data[$this->_tuv] = array();
                         }
@@ -127,7 +132,14 @@ class Zend_Translate_Adapter_Tmx extends Zend_Translate_Adapter {
         }
     }
 
-    private function _endElement($file, $name)
+
+    /**
+     * Internal method, called by xml element handler at end
+     *
+     * @param resource $file   File handler
+     * @param string   $name   Elements name
+     */
+    protected function _endElement($file, $name)
     {
         if (($this->_seg !== null) and ($name !== 'seg')) {
             $this->_content .= "</".$name.">";
@@ -151,14 +163,28 @@ class Zend_Translate_Adapter_Tmx extends Zend_Translate_Adapter {
         }
     }
 
-    private function _contentElement($file, $data)
+
+    /**
+     * Internal method, called by xml element handler for content
+     *
+     * @param resource $file File handler
+     * @param string   $data Elements content
+     */
+    protected function _contentElement($file, $data)
     {
         if (($this->_seg !== null) and ($this->_tu !== null) and ($this->_tuv !== null)) {
             $this->_content .= $data;
         }
     }
 
-    private function _findEncoding($filename)
+
+    /**
+     * Internal method, detects the encoding of the xml file
+     *
+     * @param string $name Filename
+     * @return string Encoding
+     */
+    protected function _findEncoding($filename)
     {
         $file = file_get_contents($filename, null, null, 0, 100);
         if (strpos($file, "encoding") !== false) {

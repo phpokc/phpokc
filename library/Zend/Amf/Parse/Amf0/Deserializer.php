@@ -15,12 +15,15 @@
  * @category   Zend
  * @package    Zend_Amf
  * @subpackage Parse_Amf0
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
- * @version    $Id: Deserializer.php 18951 2009-11-12 16:26:19Z alexander $
+ * @version    $Id: Deserializer.php 20096 2010-01-06 02:05:09Z bkarwin $
  */
 
-/** Zend_Amf_Parse_Deserializer */
+/** Zend_Amf_Constants */
+require_once 'Zend/Amf/Constants.php';
+
+/** @see Zend_Amf_Parse_Deserializer */
 require_once 'Zend/Amf/Parse/Deserializer.php';
 
 /**
@@ -30,7 +33,7 @@ require_once 'Zend/Amf/Parse/Deserializer.php';
  * @todo       Class could be implmented as Factory Class with each data type it's own class
  * @package    Zend_Amf
  * @subpackage Parse_Amf0
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 class Zend_Amf_Parse_Amf0_Deserializer extends Zend_Amf_Parse_Deserializer
@@ -270,9 +273,9 @@ class Zend_Amf_Parse_Amf0_Deserializer extends Zend_Amf_Parse_Deserializer
                 $returnObject->$key = $value;
             }
         }
-       if($returnObject instanceof Zend_Amf_Value_Messaging_ArrayCollection) {
+        if($returnObject instanceof Zend_Amf_Value_Messaging_ArrayCollection) {
             $returnObject = get_object_vars($returnObject);
-       }
+        }
         return $returnObject;
     }
 

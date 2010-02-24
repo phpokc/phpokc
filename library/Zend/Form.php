@@ -14,7 +14,7 @@
  *
  * @category   Zend
  * @package    Zend_Form
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 
@@ -26,9 +26,9 @@ require_once 'Zend/Validate/Interface.php';
  *
  * @category   Zend
  * @package    Zend_Form
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
- * @version    $Id: Form.php 18951 2009-11-12 16:26:19Z alexander $
+ * @version    $Id: Form.php 20096 2010-01-06 02:05:09Z bkarwin $
  */
 class Zend_Form implements Iterator, Countable, Zend_Validate_Interface
 {
@@ -1310,6 +1310,35 @@ class Zend_Form implements Iterator, Countable, Zend_Validate_Interface
 
         if (!$suppressArrayNotation && $this->isArray()) {
             $values = $this->_attachToArray($values, $this->getElementsBelongTo());
+        }
+
+        return $values;
+    }
+
+    /**
+     * Returns only the valid values from the given form input.
+     *
+     * For models that can be saved in a partially valid state, for example when following the builder,
+     * prototype or state patterns it is particularly interessting to retrieve all the current valid
+     * values to persist them.
+     *
+     * @param  array $data
+     * @return array
+     */
+    public function getValidValues($data)
+    {
+        $values = array();
+        foreach ($this->getElements() as $key => $element) {
+            if (isset($data[$key])) {
+                if($element->isValid($data[$key], $data)) {
+                    $values[$key] = $element->getValue();
+                }
+            }
+        }
+        foreach ($this->getSubForms() as $key => $form) {
+            if (isset($data[$key])) {
+                $values[$key] = $form->getValidValues($data[$key]);
+            }
         }
 
         return $values;

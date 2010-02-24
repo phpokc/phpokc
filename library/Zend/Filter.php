@@ -14,9 +14,9 @@
  *
  * @category   Zend
  * @package    Zend_Filter
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
- * @version    $Id: Filter.php 17082 2009-07-25 21:32:00Z thomas $
+ * @version    $Id: Filter.php 20280 2010-01-14 15:52:18Z kokx $
  */
 
 /**
@@ -27,11 +27,15 @@ require_once 'Zend/Filter/Interface.php';
 /**
  * @category   Zend
  * @package    Zend_Filter
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 class Zend_Filter implements Zend_Filter_Interface
 {
+
+    const CHAIN_APPEND  = 'append';
+    const CHAIN_PREPEND = 'prepend';
+
     /**
      * Filter chain
      *
@@ -47,15 +51,52 @@ class Zend_Filter implements Zend_Filter_Interface
     protected static $_defaultNamespaces = array();
 
     /**
-     * Adds a filter to the end of the chain
+     * Adds a filter to the chain
+     *
+     * @param  Zend_Filter_Interface $filter
+     * @param  string $placement
+     * @return Zend_Filter Provides a fluent interface
+     */
+    public function addFilter(Zend_Filter_Interface $filter, $placement = self::CHAIN_APPEND)
+    {
+        if ($placement == self::CHAIN_PREPEND) {
+            array_unshift($this->_filters, $filter);
+        } else {
+            $this->_filters[] = $filter;
+        }
+        return $this;
+    }
+
+    /**
+     * Add a filter to the end of the chain
      *
      * @param  Zend_Filter_Interface $filter
      * @return Zend_Filter Provides a fluent interface
      */
-    public function addFilter(Zend_Filter_Interface $filter)
+    public function appendFilter(Zend_Filter_Interface $filter)
     {
-        $this->_filters[] = $filter;
-        return $this;
+        return $this->addFilter($filter, self::CHAIN_APPEND);
+    }
+
+    /**
+     * Add a filter to the start of the chain
+     *
+     * @param  Zend_Filter_Interface $filter
+     * @return Zend_Filter Provides a fluent interface
+     */
+    public function prependFilter(Zend_Filter_Interface $filter)
+    {
+        return $this->addFilter($filter, self::CHAIN_PREPEND);
+    }
+
+    /**
+     * Get all the filters
+     *
+     * @return array
+     */
+    public function getFilters()
+    {
+        return $this->_filters;
     }
 
     /**
@@ -171,11 +212,17 @@ class Zend_Filter implements Zend_Filter_Interface
             $className = $namespace . '_' . ucfirst($classBaseName);
             if (!class_exists($className)) {
                 try {
-                    Zend_Loader::loadClass($className);
+                    $file = str_replace('_', DIRECTORY_SEPARATOR, $className) . '.php';
+                    if (Zend_Loader::isReadable($file)) {
+                        Zend_Loader::loadClass($className);
+                    } else {
+                        continue;
+                    }
                 } catch (Zend_Exception $ze) {
                     continue;
                 }
             }
+
             $class = new ReflectionClass($className);
             if ($class->implementsInterface('Zend_Filter_Interface')) {
                 if ($class->hasMethod('__construct')) {

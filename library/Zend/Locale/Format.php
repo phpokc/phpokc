@@ -15,8 +15,8 @@
  * @category   Zend
  * @package    Zend_Locale
  * @subpackage Format
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
- * @version    $Id: Format.php 18951 2009-11-12 16:26:19Z alexander $
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
+ * @version    $Id: Format.php 20279 2010-01-14 15:21:47Z thomas $
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 
@@ -29,7 +29,7 @@ require_once 'Zend/Locale/Data.php';
  * @category   Zend
  * @package    Zend_Locale
  * @subpackage Format
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 class Zend_Locale_Format
@@ -212,8 +212,8 @@ class Zend_Locale_Format
         }
 
         for ($x = 0; $x < 10; ++$x) {
-            $asource[$x] = "/" . iconv_substr($source, $x, 1) . "/u";
-            $atarget[$x] = iconv_substr($target, $x, 1);
+            $asource[$x] = "/" . iconv_substr($source, $x, 1, 'UTF-8') . "/u";
+            $atarget[$x] = iconv_substr($target, $x, 1, 'UTF-8');
         }
 
         return preg_replace($asource, $atarget, $input);
@@ -293,54 +293,26 @@ class Zend_Locale_Format
         require_once 'Zend/Locale/Math.php';
 
         $value             = Zend_Locale_Math::normalize($value);
-        $value             = self::_floatalize($value);
+        $value             = Zend_Locale_Math::floatalize($value);
         $options           = self::_checkOptions($options) + self::$_options;
         $options['locale'] = (string) $options['locale'];
 
         // Get correct signs for this locale
         $symbols = Zend_Locale_Data::getList($options['locale'], 'symbols');
+        $oenc = iconv_get_encoding('internal_encoding');
         iconv_set_encoding('internal_encoding', 'UTF-8');
 
         // Get format
         $format = $options['number_format'];
         if ($format === null) {
             $format  = Zend_Locale_Data::getContent($options['locale'], 'decimalnumber');
-            if (iconv_strpos($format, ';') !== false) {
-                if (call_user_func(Zend_Locale_Math::$comp, $value, 0, $options['precision']) < 0) {
-                    $tmpformat = iconv_substr($format, iconv_strpos($format, ';') + 1);
-                    if ($tmpformat[0] == '(') {
-                        $format = iconv_substr($format, 0, iconv_strpos($format, ';'));
-                    } else {
-                        $format = $tmpformat;
-                    }
-                } else {
-                    $format = iconv_substr($format, 0, iconv_strpos($format, ';'));
-                }
-            }
+            $format  = self::_seperateFormat($format, $value, $options['precision']);
         } else {
             // seperate negative format pattern when available
-            // @todo: The below conditional is a repeat of logic in the
-            // previous conditional; it should be refactored to a protected
-            // method to prevent code duplication.
-            if (iconv_strpos($format, ';') !== false) {
-                if (call_user_func(Zend_Locale_Math::$comp, $value, 0, $options['precision']) < 0) {
-                    $tmpformat = iconv_substr($format, iconv_strpos($format, ';') + 1);
-                    if ($tmpformat[0] == '(') {
-                        $format = iconv_substr($format, 0, iconv_strpos($format, ';'));
-                    } else {
-                        $format = $tmpformat;
-                    }
-                } else {
-                    $format = iconv_substr($format, 0, iconv_strpos($format, ';'));
-                }
-            }
-
+            $format  = self::_seperateFormat($format, $value, $options['precision']);
             if (strpos($format, '.')) {
                 if (is_numeric($options['precision'])) {
                     $value = Zend_Locale_Math::round($value, $options['precision']);
-                    // Need to "floatalize" the number; when precision > 4
-                    // and bcmath disabled, round() returns scientific notation
-                    $value = self::_floatalize($value);
                 } else {
                     if (substr($format, iconv_strpos($format, '.') + 1, 3) == '###') {
                         $options['precision'] = null;
@@ -353,15 +325,13 @@ class Zend_Locale_Format
                 }
             } else {
                 $value = Zend_Locale_Math::round($value, 0);
-                // Need to "floatalize" the number; when precision > 4
-                // and bcmath disabled, round() returns scientific notation
-                $value = self::_floatalize($value);
                 $options['precision'] = 0;
             }
             $value = Zend_Locale_Math::normalize($value);
         }
 
         if (iconv_strpos($format, '0') === false) {
+            iconv_set_encoding('internal_encoding', $oenc);
             require_once 'Zend/Locale/Exception.php';
             throw new Zend_Locale_Exception('Wrong format... missing 0');
         }
@@ -399,6 +369,7 @@ class Zend_Locale_Format
         }
 
         $prec = call_user_func(Zend_Locale_Math::$sub, $value, $number, $options['precision']);
+        $prec = Zend_Locale_Math::floatalize($prec);
         $prec = Zend_Locale_Math::normalize($prec);
         if (iconv_strpos($prec, '-') !== false) {
             $prec = iconv_substr($prec, 1);
@@ -486,8 +457,28 @@ class Zend_Locale_Format
             }
         }
 
+        iconv_set_encoding('internal_encoding', $oenc);
         return (string) $format;
     }
+
+    private static function _seperateFormat($format, $value, $precision)
+    {
+        if (iconv_strpos($format, ';') !== false) {
+            if (call_user_func(Zend_Locale_Math::$comp, $value, 0, $precision) < 0) {
+                $tmpformat = iconv_substr($format, iconv_strpos($format, ';') + 1);
+                if ($tmpformat[0] == '(') {
+                    $format = iconv_substr($format, 0, iconv_strpos($format, ';'));
+                } else {
+                    $format = $tmpformat;
+                }
+            } else {
+                $format = iconv_substr($format, 0, iconv_strpos($format, ';'));
+            }
+        }
+
+        return $format;
+    }
+
 
     /**
      * Checks if the input contains a normalized or localized number
@@ -505,6 +496,9 @@ class Zend_Locale_Format
 
         $regexs = Zend_Locale_Format::_getRegexForType('decimalnumber', $options);
         $regexs = array_merge($regexs, Zend_Locale_Format::_getRegexForType('scientificnumber', $options));
+        if (!empty($input) && ($input[0] == $symbols['decimal'])) {
+            $input = 0 . $input;
+        }
         foreach ($regexs as $regex) {
             preg_match($regex, $input, $found);
             if (isset($found[0])) {
@@ -617,35 +611,6 @@ class Zend_Locale_Format
     }
 
     /**
-     * Internal method to convert a scientific notation to float
-     * Additionally fixed a problem with PHP <= 5.2.x with big integers
-     *
-     * @param string $value
-     */
-    private static function _floatalize($value)
-    {
-        $value = strtoupper($value);
-        if (strpos($value, 'E') === false) {
-            return $value;
-        }
-
-        $number = substr($value, 0, strpos($value, 'E'));
-        if (strpos($number, '.') !== false) {
-            $post   = strlen(substr($number, strpos($number, '.') + 1));
-            $mantis = substr($value, strpos($value, 'E') + 1);
-            if ($mantis < 0) {
-                $post += abs((int) $mantis);
-            }
-
-            $value = number_format($value, $post, '.', '');
-        } else {
-            $value = number_format($value, 0, '.', '');
-        }
-
-        return $value;
-    }
-
-    /**
      * Alias for getNumber
      *
      * @param   string  $value    Number to localize
@@ -754,8 +719,12 @@ class Zend_Locale_Format
      */
     public static function convertPhpToIsoFormat($format)
     {
-        $convert = array('d' => 'dd'  , 'D' => 'EE'  , 'j' => 'd'   , 'l' => 'EEEE', 'N' => 'e'   , 'S' => 'SS'  ,
-                         'w' => 'eee' , 'z' => 'D'   , 'W' => 'ww'  , 'F' => 'MMMM', 'm' => 'MM'  , 'M' => 'MMM' ,
+        if ($format === null) {
+            return null;
+        }
+
+        $convert = array('d' => 'dd'  , 'D' => 'EE'  , 'j' => 'd'   , 'l' => 'EEEE', 'N' => 'eee' , 'S' => 'SS'  ,
+                         'w' => 'e'   , 'z' => 'D'   , 'W' => 'ww'  , 'F' => 'MMMM', 'm' => 'MM'  , 'M' => 'MMM' ,
                          'n' => 'M'   , 't' => 'ddd' , 'L' => 'l'   , 'o' => 'YYYY', 'Y' => 'yyyy', 'y' => 'yy'  ,
                          'a' => 'a'   , 'A' => 'a'   , 'B' => 'B'   , 'g' => 'h'   , 'G' => 'H'   , 'h' => 'hh'  ,
                          'H' => 'HH'  , 'i' => 'mm'  , 's' => 'ss'  , 'e' => 'zzzz', 'I' => 'I'   , 'O' => 'Z'   ,
@@ -767,6 +736,7 @@ class Zend_Locale_Format
                 $values[$key] = $convert[$value];
             }
         }
+
         return join($values);
     }
 
@@ -788,6 +758,8 @@ class Zend_Locale_Format
         $result['date_format'] = $format; // save the format used to normalize $number (convenience)
         $result['locale'] = $options['locale']; // save the locale used to normalize $number (convenience)
 
+        $oenc = iconv_get_encoding('internal_encoding');
+        iconv_set_encoding('internal_encoding', 'UTF-8');
         $day   = iconv_strpos($format, 'd');
         $month = iconv_strpos($format, 'M');
         $year  = iconv_strpos($format, 'y');
@@ -852,6 +824,7 @@ class Zend_Locale_Format
         }
 
         if (empty($parse)) {
+            iconv_set_encoding('internal_encoding', $oenc);
             require_once 'Zend/Locale/Exception.php';
             throw new Zend_Locale_Exception("Unknown date format, neither date nor time in '" . $format . "' found");
         }
@@ -871,6 +844,7 @@ class Zend_Locale_Format
         preg_match_all('/\d+/u', $number, $splitted);
 
         if (count($splitted[0]) == 0) {
+            iconv_set_encoding('internal_encoding', $oenc);
             require_once 'Zend/Locale/Exception.php';
             throw new Zend_Locale_Exception("No date part in '$date' found.");
         }
@@ -976,6 +950,7 @@ class Zend_Locale_Format
                 if (($position !== false) and ((iconv_strpos($date, $result['day']) === false) or
                                                (isset($result['year']) and (iconv_strpos($date, $result['year']) === false)))) {
                     if ($options['fix_date'] !== true) {
+                        iconv_set_encoding('internal_encoding', $oenc);
                         require_once 'Zend/Locale/Exception.php';
                         throw new Zend_Locale_Exception("Unable to parse date '$date' using '" . $format
                             . "' (false month, $position, $month)");
@@ -991,6 +966,7 @@ class Zend_Locale_Format
             if (isset($result['day']) and isset($result['year'])) {
                 if ($result['day'] > 31) {
                     if ($options['fix_date'] !== true) {
+                        iconv_set_encoding('internal_encoding', $oenc);
                         require_once 'Zend/Locale/Exception.php';
                         throw new Zend_Locale_Exception("Unable to parse date '$date' using '"
                                                       . $format . "' (d <> y)");
@@ -1006,6 +982,7 @@ class Zend_Locale_Format
             if (isset($result['month']) and isset($result['year'])) {
                 if ($result['month'] > 31) {
                     if ($options['fix_date'] !== true) {
+                        iconv_set_encoding('internal_encoding', $oenc);
                         require_once 'Zend/Locale/Exception.php';
                         throw new Zend_Locale_Exception("Unable to parse date '$date' using '"
                                                       . $format . "' (M <> y)");
@@ -1021,6 +998,7 @@ class Zend_Locale_Format
             if (isset($result['month']) and isset($result['day'])) {
                 if ($result['month'] > 12) {
                     if ($options['fix_date'] !== true || $result['month'] > 31) {
+                        iconv_set_encoding('internal_encoding', $oenc);
                         require_once 'Zend/Locale/Exception.php';
                         throw new Zend_Locale_Exception("Unable to parse date '$date' using '"
                                                       . $format . "' (M <> d)");
@@ -1047,6 +1025,7 @@ class Zend_Locale_Format
             }
         }
 
+        iconv_set_encoding('internal_encoding', $oenc);
         return $result;
     }
 
@@ -1067,12 +1046,13 @@ class Zend_Locale_Format
         $position = false;
         if ($monthlist && $monthlist[1] != 1) {
             foreach($monthlist as $key => $name) {
-                if (($position = iconv_strpos($number, $name)) !== false) {
+                if (($position = iconv_strpos($number, $name, 0, 'UTF-8')) !== false) {
                     $number   = str_ireplace($name, $key, $number);
                     return $position;
                 }
             }
         }
+
         return false;
     }
 
@@ -1090,6 +1070,7 @@ class Zend_Locale_Format
             require_once 'Zend/Locale/Exception.php';
             throw new Zend_Locale_Exception("failed to receive data from locale $locale");
         }
+
         return $format;
     }
 
@@ -1113,6 +1094,7 @@ class Zend_Locale_Format
             $options['format_type'] = 'iso';
             $options['date_format'] = self::getDateFormat($options['locale']);
         }
+
         return self::_parseDate($date, $options);
     }
 
@@ -1140,34 +1122,34 @@ class Zend_Locale_Format
         $options = self::_checkOptions($options) + self::$_options;
 
         // day expected but not parsed
-        if ((iconv_strpos($options['date_format'], 'd') !== false) and (!isset($date['day']) or ($date['day'] == ""))) {
+        if ((iconv_strpos($options['date_format'], 'd', 0, 'UTF-8') !== false) and (!isset($date['day']) or ($date['day'] == ""))) {
             return false;
         }
 
         // month expected but not parsed
-        if ((iconv_strpos($options['date_format'], 'M') !== false) and (!isset($date['month']) or ($date['month'] == ""))) {
+        if ((iconv_strpos($options['date_format'], 'M', 0, 'UTF-8') !== false) and (!isset($date['month']) or ($date['month'] == ""))) {
             return false;
         }
 
         // year expected but not parsed
-        if (((iconv_strpos($options['date_format'], 'Y') !== false) or
-             (iconv_strpos($options['date_format'], 'y') !== false)) and (!isset($date['year']) or ($date['year'] == ""))) {
+        if (((iconv_strpos($options['date_format'], 'Y', 0, 'UTF-8') !== false) or
+             (iconv_strpos($options['date_format'], 'y', 0, 'UTF-8') !== false)) and (!isset($date['year']) or ($date['year'] == ""))) {
             return false;
         }
 
         // second expected but not parsed
-        if ((iconv_strpos($options['date_format'], 's') !== false) and (!isset($date['second']) or ($date['second'] == ""))) {
+        if ((iconv_strpos($options['date_format'], 's', 0, 'UTF-8') !== false) and (!isset($date['second']) or ($date['second'] == ""))) {
             return false;
         }
 
         // minute expected but not parsed
-        if ((iconv_strpos($options['date_format'], 'm') !== false) and (!isset($date['minute']) or ($date['minute'] == ""))) {
+        if ((iconv_strpos($options['date_format'], 'm', 0, 'UTF-8') !== false) and (!isset($date['minute']) or ($date['minute'] == ""))) {
             return false;
         }
 
         // hour expected but not parsed
-        if (((iconv_strpos($options['date_format'], 'H') !== false) or
-             (iconv_strpos($options['date_format'], 'h') !== false)) and (!isset($date['hour']) or ($date['hour'] == ""))) {
+        if (((iconv_strpos($options['date_format'], 'H', 0, 'UTF-8') !== false) or
+             (iconv_strpos($options['date_format'], 'h', 0, 'UTF-8') !== false)) and (!isset($date['hour']) or ($date['hour'] == ""))) {
             return false;
         }
         return true;
