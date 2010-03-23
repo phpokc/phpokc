@@ -16,7 +16,7 @@
  * @package   Zend_Currency
  * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license   http://framework.zend.com/license/new-bsd     New BSD License
- * @version   $Id: Currency.php 20100 2010-01-06 19:05:35Z thomas $
+ * @version   $Id: Currency.php 21059 2010-02-15 21:31:42Z thomas $
  */
 
 /**
@@ -100,7 +100,7 @@ class Zend_Currency
 
         $this->setLocale($locale);
         // Get currency details
-        if (!isset($options['currency']) || !is_array($options)) {
+        if (!isset($this->_options['currency']) || !is_array($options)) {
             $this->_options['currency'] = self::getShortName($options, $this->_options['locale']);
         }
 

@@ -16,7 +16,7 @@
  * @package   Zend_File_Transfer
  * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license   http://framework.zend.com/license/new-bsd     New BSD License
- * @version   $Id: Abstract.php 20911 2010-02-04 19:40:57Z thomas $
+ * @version   $Id: Abstract.php 21039 2010-02-12 20:48:37Z thomas $
  */
 
 /**
@@ -553,7 +553,7 @@ abstract class Zend_File_Transfer_Adapter_Abstract
         $file = $this->_getFiles($files, false, true);
 
         if (is_array($options)) {
-            if ($file === null) {
+            if (empty($file)) {
                 $this->_options = array_merge($this->_options, $options);
             }
 
@@ -566,6 +566,7 @@ abstract class Zend_File_Transfer_Adapter_Abstract
 
                         case 'ignoreNoFile' :
                         case 'useByteString' :
+                        case 'detectInfos' :
                             $this->_files[$key]['options'][$name] = (boolean) $value;
                             break;
 
